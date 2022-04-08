@@ -259,17 +259,18 @@
     (.get app "/"
           (fn [_req ^js res]
             ((mi/sp
+              (timbre/info "handle request")
               (f/when-ok [token (mi/? (login-to-ecd))
                           products (mi/? (fetch-products {:token token}))]
                 (f/when-ok! (mi/? (create-ecd-offer-spreadsheet products))
                  (.send res "success"))))
              (fn [_] (timbre/info :success))
-             #(js/console.error %))))
+             (fn [err] (timbre/error err)))))
     (.get app "/delete-all"
           (fn [_req ^js res]
             ((mi/sp
               (mi/? (delete-all-files))
               (.send res "success"))
              (fn [_] (timbre/info :success))
-             #(js/console.error %))))
+             (fn [err] (timbre/error err)))))
     (.listen app port)))
