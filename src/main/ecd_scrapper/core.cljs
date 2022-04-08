@@ -2,8 +2,6 @@
   (:require
    [missionary.core :as mi]
    [taoensso.timbre :as timbre]
-   [net.cgrand.xforms :as x]
-   [ribelo.extropy :as ex]
    [ribelo.fatum :as f]
    [cljs-bean.core :refer [->js ->clj]]
    ["date-fns" :as dtf]
@@ -11,8 +9,7 @@
    ["process" :as process]
    ["googleapis" :as googleapis]
    ["express" :as express]
-   ["axios" :as axios]
-   ["fs" :as fs]))
+   ["axios" :as axios]))
 
 (def google (.-google ^js googleapis))
 
@@ -89,21 +86,23 @@
 (defn login-to-ecd []
   (mi/sp
    (let [username (.. process -env -ECD_USERNAME)
-         password (.. process -env -ECD_PASSWORD)
-         browser (mi/? (run-browser))
-         context (mi/? (new-context browser))
-         page (mi/? (create-page context))]
-     (mi/? (goto page "https://www.eurocash.pl"))
-     (mi/? (click (locator page "#c-p-bn")))
-     (mi/? (click (locator page "#ecHeader > div.fi.relative > div.menu.menu--desktop > div > a.btn.btn--green-login.m-r-25")))
-     (mi/? (fill (locator page "#login") username))
-     (mi/? (fill (locator page "#password") password))
-     (mi/? (mi/join vector
-                    (wait-for-navigation page)
-                    (click (locator page "#submit_button"))))
-     (let [id (mi/? (get-token-from-localstorage context))]
-       (.close ^js browser)
-       id))))
+         password (.. process -env -ECD_PASSWORD)]
+     (if (and username password)
+       (let [browser (mi/? (run-browser))
+             context (mi/? (new-context browser))
+             page (mi/? (create-page context))]
+         (mi/? (goto page "https://www.eurocash.pl"))
+         (mi/? (click (locator page "#c-p-bn")))
+         (mi/? (click (locator page "#ecHeader > div.fi.relative > div.menu.menu--desktop > div > a.btn.btn--green-login.m-r-25")))
+         (mi/? (fill (locator page "#login") username))
+         (mi/? (fill (locator page "#password") password))
+         (mi/? (mi/join vector
+                        (wait-for-navigation page)
+                        (click (locator page "#submit_button"))))
+         (let [id (mi/? (get-token-from-localstorage context))]
+           (.close ^js browser)
+           id))
+       (timbre/error "no username or password" username password)))))
 
 (defn create-headers [token]
   {"Authorization" (str "Bearer " token)
@@ -256,26 +255,22 @@
 
 (defn main [& args]
   (let [port (or (.. process -env -PORT) 8080)
-        username (.. process -env -ECD_USERNAME)
-        password (.. process -env -ECD_PASSWORD)
         ^js app (express)]
-    (if (and username password)
-      (do (.get app "/"
-                (fn [_req ^js res]
-                  ((mi/sp
-                    (f/when-ok [token (mi/? (login-to-ecd))
-                                products (mi/? (fetch-products {:token token}))]
-                      (f/if-ok (mi/? (create-ecd-offer-spreadsheet products))
-                        (.send res "success")
-                        (.send res "error"))))
-                   (fn [_] (timbre/info :success))
-                   #(js/console.error %))))
-          (.get app "/delete-all"
-                (fn [_req ^js res]
-                  ((mi/sp
-                    (mi/? (delete-all-files))
-                    (.send res "success"))
-                   (fn [_] (timbre/info :success))
-                   #(js/console.error %))))
-          (.listen app port))
-      (js/console.error "no username or password"))))
+    (.get app "/"
+          (fn [_req ^js res]
+            ((mi/sp
+              (f/when-ok [token (mi/? (login-to-ecd))
+                          products (mi/? (fetch-products {:token token}))]
+                (f/if-ok (mi/? (create-ecd-offer-spreadsheet products))
+                  (.send res "success")
+                  (.send res "error"))))
+             (fn [_] (timbre/info :success))
+             #(js/console.error %))))
+    (.get app "/delete-all"
+          (fn [_req ^js res]
+            ((mi/sp
+              (mi/? (delete-all-files))
+              (.send res "success"))
+             (fn [_] (timbre/info :success))
+             #(js/console.error %))))
+    (.listen app port)))
