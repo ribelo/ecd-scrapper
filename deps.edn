@@ -3,7 +3,7 @@
          com.taoensso/timbre        {:mvn/version "5.1.2"}
          cljs-bean/cljs-bean        {:mvn/version "1.7.0"}
          com.github.ribelo/extropy  {:mvn/version "0.0.15"}
-         com.github.ribelo/fatum    {:mvn/version "0.0.26"}
+         com.github.ribelo/fatum    {:mvn/version "0.0.27"}
          funcool/rumext             {:mvn/version "2022.01.20.128"}}
  :aliases
  {:cljs
