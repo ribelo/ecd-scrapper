@@ -102,7 +102,7 @@
          (let [id (mi/? (get-token-from-localstorage context))]
            (.close ^js browser)
            id))
-       (timbre/error "no username or password" username password)))))
+       (f/fail "no username or password" {:username username :password password})))))
 
 (defn create-headers [token]
   {"Authorization" (str "Bearer " token)
@@ -148,17 +148,21 @@
     :or {query "" skip 0 size 30 try-count 0}
     :as opts}]
   (mi/sp
-   (when (or (not total-count) (< skip total-count))
-     (f/if-ok [data (mi/? (query-products opts))]
-       (let [n (:total-count data)
-             items (:items data)]
-         (timbre/debugf "continue query: %s size: %d skip: %d :total-count %d" query size skip total-count)
-         (when (seq items)
-           (into items (filter identity) (mi/? (fetch-products (assoc opts :skip (+ skip size) :size size :total-count n))))))
-       (when (< try-count 10)
-         (timbre/warn "try again")
-         (timbre/warn (ex-message data))
-         (mi/? (fetch-products (update opts :try-count inc))))))))
+   (when (zero? skip)
+     (timbre/info "token" token))
+   (if token
+     (when (or (not total-count) (< skip total-count))
+       (f/if-ok [data (mi/? (query-products opts))]
+         (let [n (:total-count data)
+               items (:items data)]
+           (timbre/infof "continue query: %s size: %d skip: %d :total-count %d" query size skip total-count)
+           (when (seq items)
+             (into items (filter identity) (mi/? (fetch-products (assoc opts :skip (+ skip size) :size size :total-count n))))))
+         (when (< try-count 10)
+           (timbre/warn "try again")
+           (timbre/warn (ex-message data))
+           (mi/? (fetch-products (update opts :try-count inc))))))
+     (f/fail "invalid token" {:token token}))))
 
 (defn create-spreadsheet [title]
   (mi/sp
@@ -244,14 +248,10 @@
                      (conj acc [name ean net-price gross-price]))
                    [["name" "ean" "net-price" "gross-price"]]
                    data)]
-       (let [resp (mi/? (append-data id "offer" values))]
-         (f/if-ok resp
-           (timbre/info "successfull append data")
-           (timbre/error "error appending data" (ex-message resp))))
-       (let [resp (mi/? (share-file id "r.krzywaznia@teas.com.pl"))]
-         (f/if-ok resp
-           (timbre/info "successfull sharing spreadsheet")
-           (timbre/error "error during sharing spreadsheet" (ex-message resp))))))))
+       (f/when-ok [resp (mi/? (append-data id "offer" values))]
+         (timbre/info "successfull append data"))
+       (f/when-ok [resp (mi/? (share-file id "r.krzywaznia@teas.com.pl"))]
+         (timbre/info "successfull sharing spreadsheet"))))))
 
 (defn main [& args]
   (let [port (or (.. process -env -PORT) 8080)
@@ -261,9 +261,8 @@
             ((mi/sp
               (f/when-ok [token (mi/? (login-to-ecd))
                           products (mi/? (fetch-products {:token token}))]
-                (f/if-ok (mi/? (create-ecd-offer-spreadsheet products))
-                  (.send res "success")
-                  (.send res "error"))))
+                (f/when-ok! (mi/? (create-ecd-offer-spreadsheet products))
+                 (.send res "success"))))
              (fn [_] (timbre/info :success))
              #(js/console.error %))))
     (.get app "/delete-all"
