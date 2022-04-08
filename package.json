@@ -1,0 +1,20 @@
+{
+  "name": "ecd-scrapper",
+  "version": "0.0.1",
+  "main": "dist/app.js",
+  "license": "MIT",
+  "scripts": {
+    "shadow:build": "shadow-cljs release app"
+  },
+  "dependencies": {
+    "axios": "^0.26.1",
+    "date-fns": "^2.28.0",
+    "express": "^4.17.3",
+    "googleapis": "^100.0.0",
+    "playwright-chromium": "^1.20.2",
+    "process": "^0.11.10"
+  },
+  "devDependencies": {
+    "shadow-cljs": "^2.18.0"
+  }
+}

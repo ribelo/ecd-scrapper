@@ -1,0 +1,6 @@
+{:deps {:aliases [:cljs]}
+ :builds
+ {:app {:target           :node-script
+        :output-to        "dist/app.js"
+        :main             ecd-scrapper.core/main
+        :compiler-options {:optimizations :advanced}}}}
