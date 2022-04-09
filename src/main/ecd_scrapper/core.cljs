@@ -260,8 +260,8 @@
           (fn [_req ^js res]
             ((mi/sp
               (timbre/info "handle request")
-              (f/when-ok [token (mi/? (login-to-ecd))
-                          products (mi/? (fetch-products {:token token}))]
+              (f/when-ok! [token (mi/? (login-to-ecd))
+                           products (mi/? (fetch-products {:token token}))]
                 (f/when-ok! (mi/? (create-ecd-offer-spreadsheet products))
                  (.send res "success"))))
              (fn [_] (timbre/info :success))
