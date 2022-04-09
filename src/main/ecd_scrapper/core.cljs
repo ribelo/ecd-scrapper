@@ -39,7 +39,7 @@
 
 (defn run-browser [& {:keys [headless?]}]
   (let [<v (mi/dfv)]
-    (-> (.launch (.-chromium playwright) #js {:headless (boolean headless?)})
+    (-> (.launch (.-chromium playwright) #js {:headless headless?})
         (.then (fn [^js obj] (<v (fn [] obj))))
         (.catch (fn [^js err] (<v (fn [] (f/fail! (f/ensure-fail err)))))))
     (mi/absolve <v)))
@@ -88,7 +88,7 @@
    (let [username (.. process -env -ECD_USERNAME)
          password (.. process -env -ECD_PASSWORD)]
      (if (and username password)
-       (let [browser (mi/? (run-browser))
+       (let [browser (mi/? (run-browser :headless? true))
              context (mi/? (new-context browser))
              page (mi/? (create-page context))]
          (mi/? (goto page "https://www.eurocash.pl"))
